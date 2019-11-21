@@ -231,7 +231,7 @@ INCIDENTS = [
     }
 ]
 
-INCIDENTS_LAST_RUN_TIME = {'latsRun': '2019-11-21T07:31:01Z'}
+INCIDENTS_LAST_RUN_TIME = {'lastRun': '2019-11-21T07:31:01Z'}
 
 
 '''Function tests'''

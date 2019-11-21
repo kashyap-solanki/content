@@ -306,8 +306,7 @@ def fetch_incidents_command(
             })
 
         new_last_run = cases_report[0].get('occurred')
-    # Return results
-    return cases_report, {"latsRun": new_last_run}
+    return cases_report, {"lastRun": new_last_run}
 
 
 @logger
