@@ -86,7 +86,7 @@ def test_had_duplicates(id_set, id_to_check, result):
 INTEGRATION_DATA = {
     "Cortex XDR - IR": {
         "name": "Cortex XDR - IR",
-        "file_path": "Packs/CortexXDR/Integrations/PaloAltoNetworks_XDR/PaloAltoNetworks_XDR.yml",
+        "file_path": "Packs/CortexXDR/Integrations/XDR_PaloAltoNetworks/XDR_PaloAltoNetworks.yml",
         "fromversion": "4.1.0",
         "commands": [
             "xdr-get-incidents",
@@ -99,7 +99,7 @@ INTEGRATION_DATA = {
 SCRIPT_DATA = {
     "EntryWidgetNumberHostsXDR": {
         "name": "EntryWidgetNumberHostsXDR",
-        "file_path": "Packs/CortexXDR/Scripts/EntryWidgetNumberHostsXDR/EntryWidgetNumberHostsXDR.yml",
+        "file_path": "Packs/CortexXDR/Scripts/XDREntryWidgetNumberHosts/XDREntryWidgetNumberHosts.yml",
         "fromversion": "5.0.0",
         "tests": [
             "No test - no need to test widget"
@@ -134,7 +134,7 @@ class TestIntegration(unittest.TestCase):
         """
         Test for getting all the integration data
         """
-        file_path = 'Packs/CortexXDR/Integrations/PaloAltoNetworks_XDR/PaloAltoNetworks_XDR.yml'
+        file_path = 'Packs/CortexXDR/Integrations/XDR_PaloAltoNetworks/XDR_PaloAltoNetworks.yml'
         data = get_integration_data(file_path)
         self.assertDictEqual(data, INTEGRATION_DATA)
 
@@ -142,7 +142,7 @@ class TestIntegration(unittest.TestCase):
         """
         Test for getting the script data
         """
-        file_path = 'Packs/CortexXDR/Scripts/EntryWidgetNumberHostsXDR/EntryWidgetNumberHostsXDR.yml'
+        file_path = 'Packs/CortexXDR/Scripts/XDREntryWidgetNumberHosts/XDREntryWidgetNumberHosts.yml'
         data = get_script_data(file_path)
         self.assertDictEqual(data, SCRIPT_DATA)
 
