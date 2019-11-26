@@ -9,7 +9,7 @@ import yaml
 
 from Tests.scripts.constants import INTEGRATIONS_DIR, MISC_DIR, PLAYBOOKS_DIR, REPORTS_DIR, DASHBOARDS_DIR, \
     WIDGETS_DIR, SCRIPTS_DIR, INCIDENT_FIELDS_DIR, CLASSIFIERS_DIR, LAYOUTS_DIR, CONNECTIONS_DIR, \
-    BETA_INTEGRATIONS_DIR, INDICATOR_FIELDS_DIR, INCIDENT_TYPES_DIR, TEST_PLAYBOOKS_DIR
+    BETA_INTEGRATIONS_DIR, INDICATOR_FIELDS_DIR, INCIDENT_TYPES_DIR, TEST_PLAYBOOKS_DIR, PACKS_DIR
 from Tests.test_utils import print_error
 from package_creator import DIR_TO_PREFIX, merge_script_package_to_yml, write_yaml_with_docker
 
@@ -35,8 +35,6 @@ PACKAGES_TO_SKIP = [
     'HelloWorldSimple',
     'HelloWorldScript'
 ]
-
-PACKS_DIR = 'Packs'
 
 # temp folder names
 BUNDLE_POST = 'bundle_post'
@@ -109,20 +107,6 @@ def add_tools_to_bundle(bundle):
         zipf.close()
 
 
-# modify incident fields file to contain only `incidentFields` field (array)
-# from { "incidentFields": [...]} to [...]
-def convert_incident_fields_to_array(incident_fields_dir=INCIDENT_FIELDS_DIR):
-    scan_files = glob.glob(os.path.join(incident_fields_dir, '*.json'))
-    for path in scan_files:
-        with open(path, 'r+') as file_:
-            data = json.load(file_)
-            incident_fields = data.get('incidentFields')
-            if incident_fields is not None:
-                file_.seek(0)
-                json.dump(incident_fields, file_, indent=2)
-                file_.truncate()
-
-
 def copy_playbook_yml(path, out_path, *args):
     '''Add "playbook-" prefix to playbook file's copy destination filename if it wasn't already present'''
     dest_dir_path = os.path.dirname(out_path)
@@ -135,7 +119,7 @@ def copy_playbook_yml(path, out_path, *args):
 
 def copy_yaml_post(path, out_path, yml_info):
     parent_dir_name = os.path.basename(os.path.dirname(path))
-    if parent_dir_name in DIR_TO_PREFIX.keys() and not os.path.basename(path).startswith('playbook-'):
+    if parent_dir_name in DIR_TO_PREFIX and not os.path.basename(path).startswith('playbook-'):
         script_obj = yml_info
         if parent_dir_name != 'Scripts':
             script_obj = yml_info['script']
@@ -209,29 +193,7 @@ def copy_test_files(bundle_test, test_playbooks_dir=TEST_PLAYBOOKS_DIR):
             shutil.copyfile(path, os.path.join(bundle_test, os.path.basename(path)))
 
 
-def main(circle_artifacts):
-    print('Starting to create content artifact...')
-
-    print('creating dir for bundles...')
-    for bundle_dir in [BUNDLE_POST, BUNDLE_TEST, PACKS_BUNDLE]:
-        os.mkdir(bundle_dir)
-
-    add_tools_to_bundle(BUNDLE_POST)
-
-    convert_incident_fields_to_array()
-
-    for package_dir in DIR_TO_PREFIX:
-        # handles nested package directories
-        create_unifieds_and_copy(package_dir)
-
-    for content_dir in CONTENT_DIRS:
-        print(f'Copying dir {content_dir} to bundles...')
-        copy_dir_files(content_dir, BUNDLE_POST)
-
-    copy_test_files(BUNDLE_TEST)
-
-    # handle copying packs content to content_new.zip and content_test.zip
-    packs = get_child_directories(PACKS_DIR)
+def copy_packs_content_to_old_bundles(packs):
     for pack in packs:
         # each pack directory has it's own content subdirs, 'Integrations', 'Scripts', 'TestPlaybooks', 'Layouts' etc.
         sub_dirs_paths = get_child_directories(pack)
@@ -242,12 +204,13 @@ def main(circle_artifacts):
             else:
                 # handle one-level deep content
                 copy_dir_files(sub_dir_path, BUNDLE_POST)
-                if dir_name in DIR_TO_PREFIX.keys():
+                if dir_name in DIR_TO_PREFIX:
                     # then it's a directory with nested packages that need to be handled
                     # handle nested packages
                     create_unifieds_and_copy(sub_dir_path)
 
-    # handle copying packs content to packs_bundle for zipping to `content_packs.zip`
+
+def copy_packs_content_to_packs_bundle(packs):
     for pack in packs:
         pack_name = os.path.basename(pack)
         pack_dst = os.path.join(PACKS_BUNDLE, pack_name)
@@ -262,26 +225,50 @@ def main(circle_artifacts):
             dir_name = os.path.basename(content_dir)
             dest_dir = os.path.join(pack_dst, dir_name)
             os.mkdir(dest_dir)
-            if dir_name in DIR_TO_PREFIX.keys():
+            if dir_name in DIR_TO_PREFIX:
                 packages_dirs = get_child_directories(content_dir)
                 for package_dir in packages_dirs:
                     package_dir_name = os.path.basename(package_dir)
-                    package_dir_with_slash = package_dir + '/'
-                    merge_script_package_to_yml(package_dir_with_slash, dir_name, dest_path=dest_dir)
+                    merge_script_package_to_yml(package_dir, dir_name, dest_path=dest_dir)
 
                     # also copy CHANGELOG markdown files over (should only be one per package)
                     package_files = get_child_files(package_dir)
                     changelog_files = [
                         file_path
-                        for file_path in package_files if ('CHANGELOG' in file_path and file_path.endswith('.md'))
+                        for file_path in package_files if 'CHANGELOG.md' in file_path
                     ]
                     for md_file_path in changelog_files:
-                        md_out_name = DIR_TO_PREFIX.get(dir_name) + '-' + package_dir_name + '_CHANGELOG.md'
+                        md_out_name = '{}-{}_CHANGELOG.md'.format(DIR_TO_PREFIX.get(dir_name), package_dir_name)
                         shutil.copyfile(md_file_path, os.path.join(dest_dir, md_out_name))
             else:
-                if dir_name == INCIDENT_FIELDS_DIR:
-                    convert_incident_fields_to_array(content_dir)
                 copy_dir_files(content_dir, dest_dir)
+
+
+def main(circle_artifacts):
+    print('Starting to create content artifact...')
+
+    print('creating dir for bundles...')
+    for bundle_dir in [BUNDLE_POST, BUNDLE_TEST, PACKS_BUNDLE]:
+        os.mkdir(bundle_dir)
+
+    add_tools_to_bundle(BUNDLE_POST)
+
+    for package_dir in DIR_TO_PREFIX:
+        # handles nested package directories
+        create_unifieds_and_copy(package_dir)
+
+    for content_dir in CONTENT_DIRS:
+        print(f'Copying dir {content_dir} to bundles...')
+        copy_dir_files(content_dir, BUNDLE_POST)
+
+    copy_test_files(BUNDLE_TEST)
+
+    # handle copying packs content to bundles for zipping to content_new.zip and content_test.zip
+    packs = get_child_directories(PACKS_DIR)
+    copy_packs_content_to_old_bundles(packs)
+
+    # handle copying packs content to packs_bundle for zipping to `content_packs.zip`
+    copy_packs_content_to_packs_bundle(packs)
 
     print('Copying content descriptor to bundles')
     for bundle_dir in [BUNDLE_POST, BUNDLE_TEST]:
